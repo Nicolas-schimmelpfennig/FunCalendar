@@ -12,7 +12,20 @@
 		<key>FunCalendarWidgetExtension.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>1</integer>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>37A0C6112EE1AFE6003E10E6</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>37A0C6262EE1B02F003E10E6</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

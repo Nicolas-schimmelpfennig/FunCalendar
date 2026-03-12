@@ -5,11 +5,16 @@
 //
 
 import SwiftUI
+import StoreKit
+import Combine
+import Foundation
 import WidgetKit
 
 struct AppMainView: View {
     // MARK: – Input
     let date: Date
+    
+    @StateObject private var store = StoreViewModel()
 
     @State private var widgetMode: WidgetMode = .bar
     @State private var Deadline = Date()
@@ -149,10 +154,41 @@ struct AppMainView: View {
                 widgetContainer {
                     widgetContent
                 }
+                
                 Spacer()
             }
             
-            Spacer(minLength: 24)
+            
+            VStack(alignment: .center) {
+                
+                if store.isPurchased {
+                    Label("Lifetime license active", systemImage: "checkmark.seal.fill")
+                        .frame(maxWidth: .infinity)
+                        .font(.subheadline)
+                    
+                } else {
+                    Label("Purchase a license to unlock widget customization.", systemImage: "newspaper")
+                        .frame(maxWidth: .infinity)
+                        .font(.subheadline)
+                    if let product = store.product {
+                        Button {
+                            Task { await store.purchase() }
+                        } label : {
+                            Text(store.isPurchased ? "Purchased" : "Buy \(product.displayPrice)")
+                            //.frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(store.isPurchased)
+                    }
+                    else {
+                        Text("loading store")
+                    }
+                }
+            }
+            .padding(.horizontal)
+                        
+            //Spacer(minLength: 24)
+            
             // MARK: settings
 
             VStack(alignment: .leading, spacing: 8) {
@@ -480,14 +516,66 @@ private func saveToWidgetDefaults() {
     if let data = try? NSKeyedArchiver.archivedData(withRootObject: deadlineUIColor, requiringSecureCoding: false) {
         defaults.set(data, forKey: "deadlineColor")
     }
-
     WidgetCenter.shared.reloadAllTimelines()
 }
 
 }
 
+@MainActor
+final class StoreViewModel: ObservableObject {
+    private let productIdentifier = "com.funcalendar.app.license"
+    
+    @Published var product: Product?
+    @Published var isPurchased = false
+    
+    init() {
+        listenForTransaction() //this was a chat suggestion and not in the tuturial; nonetheless seems to make sense that this function should be called?
+        Task {
+            await loadProduct()
+            await updatePurchaseStatus()
+        }
+    }
+    
+    func loadProduct() async {
+        if let loaded = try? await Product.products(for: [productIdentifier]).first {
+            product = loaded
+        }
+    }
+    
+    func purchase() async {
+        guard let product else { return }
+        
+        if case .success(let result) = try? await product.purchase(),
+           case .verified(let trasaction) = result {
+            await trasaction.finish()
+            await updatePurchaseStatus()
+        }
+    }
+    
+    func updatePurchaseStatus() async{
+        if let result = await Transaction.latest(for: productIdentifier),
+           case .verified(let transaction) = result {
+            isPurchased = (transaction.revocationDate == nil)
+        } else {
+            isPurchased = false
+        }
+    }
+    
+    private func listenForTransaction() {
+        Task { for await update in Transaction.updates {
+            
+            if case .verified(let transaction) = update,
+               transaction.productID == productIdentifier {
+                await transaction.finish()
+                await updatePurchaseStatus()
+            }
+        }}
+    }
+    
+}
+
 #Preview {
     AppMainView(
-        date: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 23))!
+        date: Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 11))!
     )
 }
