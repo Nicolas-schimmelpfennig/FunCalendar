@@ -28,9 +28,12 @@ struct MiniCalendarGridView: View {
     let deadlineColor: Color
     
     let daySize: CGFloat
-    
+
     let circleSize: CGFloat          // 40 for large, 18 for bar, etc.
-    let gridSpacing: CGFloat         // spacing between circles
+    let gridSpacingX: CGFloat        // horizontal spacing between circles
+    let gridSpacingY: CGFloat        // vertical spacing between rows
+    let headerSpacing: CGFloat       // spacing between weekday header row and first circle row
+    let headerLabelSpacing: CGFloat  // spacing between the day abbreviation labels
     
     // MARK: - Calendar
     
@@ -73,10 +76,10 @@ struct MiniCalendarGridView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack {
+        VStack(spacing: headerSpacing) {
             let mondayFirst = Array(calendar.shortWeekdaySymbols[1...6]) + [calendar.shortWeekdaySymbols[0]]
 
-            HStack(spacing: gridSpacing*2) {
+            HStack(spacing: headerLabelSpacing) {
                 ForEach(mondayFirst, id: \.self) { symbol in
                     Text(symbol.prefix(2))
                         .font(.system(size:daySize, weight: .medium))
@@ -86,10 +89,10 @@ struct MiniCalendarGridView: View {
             }
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.fixed(circleSize), spacing: gridSpacing),
+                    repeating: GridItem(.fixed(circleSize), spacing: gridSpacingX),
                     count: 7
                 ),
-                spacing: gridSpacing
+                spacing: gridSpacingY
             ) {
                 ForEach(gridDates, id: \.self) { d in
                     CalendarCircleView(
@@ -186,7 +189,10 @@ private struct CalendarCircleView: View {
         deadlineColor: .cyan,
         daySize: 10,
         circleSize: 40,
-        gridSpacing: 2
+        gridSpacingX: 2,
+        gridSpacingY: 2,
+        headerSpacing: 4,
+        headerLabelSpacing: 4
     )
     .padding()
     

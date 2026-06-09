@@ -66,6 +66,7 @@
 		37D42C8F2F39FDB3002DD3A0 /* Exceptions for "FunCalendarWidget" folder in "FunCalendar" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				AboutView.swift,
 				AppMainView.swift,
 			);
 			target = 37A0C6112EE1AFE6003E10E6 /* FunCalendar */;

@@ -70,7 +70,8 @@ struct WidgetAppState {
 
         let startDate = defaults?.object(forKey: "startDate") as? Date
         let deadline = defaults?.object(forKey: "deadline") as? Date
-        let isDeadlineActive = defaults?.bool(forKey: "isDeadlineActive") ?? false
+        let isPurchased = defaults?.bool(forKey: "isPurchased") ?? false
+        let isDeadlineActive = isPurchased && (defaults?.bool(forKey: "isDeadlineActive") ?? false)
         let showProgressBar = defaults?.bool(forKey: "showProgressBar") ?? false
 
         let todayColor: Color = {
@@ -139,6 +140,7 @@ struct Provider: AppIntentTimelineProvider {
 struct DayEntry: TimelineEntry {
     let date: Date
     let configuration: ConfigurationAppIntent
+    var previewState: WidgetAppState? = nil
 }
 
 
@@ -147,7 +149,7 @@ struct DayEntry: TimelineEntry {
 struct FunCalendarWidgetEntryView: View {
     var entry: DayEntry
     private var appState: WidgetAppState {
-        WidgetAppState.load(referenceDate: entry.date)
+        entry.previewState ?? WidgetAppState.load(referenceDate: entry.date)
     }
 
     @Environment(\.widgetFamily) private var family
@@ -167,7 +169,10 @@ struct FunCalendarWidgetEntryView: View {
                     
                 case .systemSmall:
                     MiniCalendarView(date: entry.date, appState: appState)
+                        .fixedSize()
                         .scaleEffect(0.45)
+                       
+                    
 
                 default:
                     Text("Please choose the large, small or medium widget")
@@ -199,6 +204,21 @@ struct FunCalendarWidget: Widget {
 }
 
 
+private extension Int {
+    var ordinalSuffix: String {
+        switch self % 100 {
+        case 11, 12, 13: return "th"
+        default:
+            switch self % 10 {
+            case 1: return "st"
+            case 2: return "nd"
+            case 3: return "rd"
+            default: return "th"
+            }
+        }
+    }
+}
+
 // MARK: - Mini Calendar View
 
 struct MiniCalendarView: View {
@@ -224,6 +244,7 @@ struct MiniCalendarView: View {
         calendar.shortWeekdaySymbols[(calendar.component(.weekday, from: date) + 5) % 7]
             .capitalized
     }
+
     
     
     // MARK: Month metadata
@@ -261,39 +282,37 @@ struct MiniCalendarView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.1)
                     .allowsTightening(true)
-                    //.background(Color(.red).opacity(0.1))
-
+                    .offset(x: 0, y: -8)
+                  
 
                 VStack(alignment: .trailing) {
                     HStack {
+                        Text(day.ordinalSuffix)
+                            .font(.system(size: 20).bold())
+                        
+                        Spacer()
+                        
                         Text("\(monthName.prefix(3))")
                             .font(.system(size: 20).bold())
-                        Spacer()
+                        
                         Text("\(year.description)")
                             .font(.system(size:20, weight: .light))
-                            
                     }
-                    //.background(Color(.red).opacity(0.1))
-                    //Spacer()
                     Text(appState.daysRemainingText)
                         .font(.system(size: 20, weight: .medium))
                         .opacity(appState.isDeadlineActive ? 1 : 0)
                         .allowsTightening(true)
                 }
-                //.background(Color(.red).opacity(0.1))
-                .padding(.vertical)
-                
+                .padding(.vertical, 2)
             }
-            //.background(Color(.red).opacity(0.1))
-           
-            
+
             ProgressView(value: appState.progress)
                 .progressViewStyle(.linear)
                 .tint(.primary)
                 .frame(height: 4)
                 .offset(y: -10)
                 .opacity(appState.isDeadlineActive && appState.showProgressBar ? 1 : 0)
-            
+
             MiniCalendarGridView(
                 baseDate: date,
                 startDate: appState.startDate ?? date,
@@ -302,15 +321,19 @@ struct MiniCalendarView: View {
                 todayColor: appState.todayColor,
                 deadlineColor: appState.deadlineColor,
                 daySize: 10,
-                circleSize: 40,
-                gridSpacing: 2)
-            .scaleEffect(0.95)
-            //.background(Color.red)
-            .padding(.bottom, 20)
+                circleSize: 37,
+                gridSpacingX: 2,
+                gridSpacingY: 2,
+                headerSpacing: 5,
+                headerLabelSpacing: 1)
         }
-        .padding(.horizontal, 50)
+        .padding(.horizontal, 35)
+       
     }
 }
+
+
+
 
 
 // MARK: - Bar (Medium) Calendar View
@@ -342,12 +365,16 @@ struct BarCalendarView: View {
                         .offset(x: 0, y: -13)
                         //.background(Color.red.opacity(0.15))
                         
-              
-                    Spacer()
 
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(monthName.prefix(3))
-                            .font(.system(size: 16).bold())
+                        HStack {
+                            Text(day.ordinalSuffix)
+                                .font(.system(size: 16).bold())
+                            Spacer()
+                            Text(monthName.prefix(3))
+                                .font(.system(size: 16).bold())
+                        }
+                        
                         Text("\(year.description)")
                             .font(.system(size:13, weight: .light))
                             //.fixedSize()
@@ -390,7 +417,10 @@ struct BarCalendarView: View {
                     deadlineColor: appState.deadlineColor,
                     daySize: 13,
                     circleSize: 40,
-                    gridSpacing: 2)
+                    gridSpacingX: 2,
+                gridSpacingY: 2,
+                headerSpacing: 4,
+                headerLabelSpacing: 4)
             }
             .scaleEffect(0.50)
             .frame(width: 70, height: 150)
@@ -416,10 +446,19 @@ struct BarCalendarView: View {
 #Preview("custom date – Medium", as: .systemMedium) {
     FunCalendarWidget()
 } timeline: {
+    let previewDate = Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 10))!
     DayEntry(
-        date: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 23))!,
-        configuration: ConfigurationAppIntent()
-        
+        date: previewDate,
+        configuration: ConfigurationAppIntent(),
+        previewState: WidgetAppState(
+            referenceDate: previewDate,
+            startDate: Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1))!,
+            deadline: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 25))!,
+            isDeadlineActive: true,
+            showProgressBar: true,
+            todayColor: .orange,
+            deadlineColor: .cyan
+        )
     )
 }
 
