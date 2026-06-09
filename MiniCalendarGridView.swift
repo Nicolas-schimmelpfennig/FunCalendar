@@ -27,6 +27,8 @@ struct MiniCalendarGridView: View {
     let todayColor: Color
     let deadlineColor: Color
     
+    let daySize: CGFloat
+    
     let circleSize: CGFloat          // 40 for large, 18 for bar, etc.
     let gridSpacing: CGFloat         // spacing between circles
     
@@ -58,7 +60,7 @@ struct MiniCalendarGridView: View {
     // MARK: - Grid Dates (7x5 = 35 cells)
     
     private var gridDates: [Date] {
-        let totalCells = 35
+        let totalCells = 42
         let firstVisibleDate = calendar.date(byAdding: .day,
                                              value: -firstWeekdayOffset,
                                              to: monthStart)!
@@ -74,10 +76,10 @@ struct MiniCalendarGridView: View {
         VStack {
             let mondayFirst = Array(calendar.shortWeekdaySymbols[1...6]) + [calendar.shortWeekdaySymbols[0]]
 
-            HStack(spacing: 4) {
+            HStack(spacing: gridSpacing*2) {
                 ForEach(mondayFirst, id: \.self) { symbol in
                     Text(symbol.prefix(2))
-                        .font(.system(size:10, weight: .medium))
+                        .font(.system(size:daySize, weight: .medium))
                         .frame(width: 38)
                         .opacity(1)
                 }
@@ -103,6 +105,7 @@ struct MiniCalendarGridView: View {
                 }
             }
         }
+        //.background(Color.red)
     }
 }
 
@@ -130,19 +133,13 @@ private struct CalendarCircleView: View {
     var body: some View {
         let isCurrentMonth = calendar.component(.month, from: date) == month
         
-        Group {
-            if isCurrentMonth {
-                Circle()
-                    .fill(circleColor(for: date))
-                    .overlay(
-                        Circle()
-                            .stroke(Color.primary.opacity(0.5), lineWidth: 0.7)
-                    )
-            } else {
+        Circle()
+            .fill(circleColor(for: date))
+            .overlay(
                 Circle()
                     .stroke(Color.primary.opacity(0.5), lineWidth: 0.7)
-            }
-        }
+            )
+            //.opacity(isCurrentMonth ? 1 : 0.3)
         .frame(width: circleSize, height: circleSize)
     }
     
@@ -168,6 +165,12 @@ private struct CalendarCircleView: View {
             return .primary
         }
         
+        // Dates outside current month (excluding deadline)
+        if calendar.component(.month, from: d) != month &&
+            !calendar.isDate(d, inSameDayAs: deadline) {
+            return .primary.opacity(0)
+        }
+        
         // Future dates
         return Color.gray.opacity(0.3)
     }
@@ -177,10 +180,11 @@ private struct CalendarCircleView: View {
     MiniCalendarGridView(
         baseDate: Date(),
         startDate: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
-        deadline: Calendar.current.date(byAdding: .day, value: 10, to: Date())!,
+        deadline: Calendar.current.date(byAdding: .day, value: 27, to: Date())!,
         isDeadlineActive: true,
         todayColor: .orange,
         deadlineColor: .cyan,
+        daySize: 10,
         circleSize: 40,
         gridSpacing: 2
     )

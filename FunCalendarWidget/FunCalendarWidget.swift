@@ -253,11 +253,11 @@ struct MiniCalendarView: View {
     }
     // MARK: Large Calendar View
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 0) {
 
             HStack(alignment: .top, spacing: 5) {
                 Text("\(day)")
-                    .font(.system(size:85, weight: .bold))
+                    .font(.system(size:60, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.1)
                     .allowsTightening(true)
@@ -267,16 +267,16 @@ struct MiniCalendarView: View {
                 VStack(alignment: .trailing) {
                     HStack {
                         Text("\(monthName.prefix(3))")
-                            .font(.system(size: 25).bold())
+                            .font(.system(size: 20).bold())
                         Spacer()
                         Text("\(year.description)")
-                            .font(.system(size:25, weight: .light))
+                            .font(.system(size:20, weight: .light))
                             
                     }
                     //.background(Color(.red).opacity(0.1))
-                    Spacer()
+                    //Spacer()
                     Text(appState.daysRemainingText)
-                        .font(.system(size: 25, weight: .medium))
+                        .font(.system(size: 20, weight: .medium))
                         .opacity(appState.isDeadlineActive ? 1 : 0)
                         .allowsTightening(true)
                 }
@@ -301,11 +301,14 @@ struct MiniCalendarView: View {
                 isDeadlineActive: appState.isDeadlineActive,
                 todayColor: appState.todayColor,
                 deadlineColor: appState.deadlineColor,
+                daySize: 10,
                 circleSize: 40,
                 gridSpacing: 2)
+            .scaleEffect(0.95)
+            //.background(Color.red)
             .padding(.bottom, 20)
         }
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 50)
     }
 }
 
@@ -368,7 +371,7 @@ struct BarCalendarView: View {
                     }
                 }
             }
-            .frame(width: 130, height: 135)
+            .frame(width: 150, height: 135)
             .padding(.leading, 13)
             .padding(.top, 5)
             //.background(Color.white)
@@ -385,11 +388,12 @@ struct BarCalendarView: View {
                     isDeadlineActive: appState.isDeadlineActive,
                     todayColor: appState.todayColor,
                     deadlineColor: appState.deadlineColor,
+                    daySize: 13,
                     circleSize: 40,
                     gridSpacing: 2)
             }
-            .scaleEffect(0.60)
-            .frame(width: 100, height: 150)
+            .scaleEffect(0.50)
+            .frame(width: 70, height: 150)
             .padding(.trailing, 50)
             
 
@@ -409,12 +413,13 @@ struct BarCalendarView: View {
     )
 }
 
-#Preview("custom date – Large", as: .systemLarge) {
+#Preview("custom date – Medium", as: .systemMedium) {
     FunCalendarWidget()
 } timeline: {
     DayEntry(
-        date: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 28))!,
+        date: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 23))!,
         configuration: ConfigurationAppIntent()
+        
     )
 }
 

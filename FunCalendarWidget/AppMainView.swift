@@ -25,6 +25,8 @@ struct AppMainView: View {
     @State private var deadlineColor: Color = Color(red: 0.3, green: 1, blue: 1, opacity: 1)
     @State private var isDeadlineActive: Bool = true
     @State private var showProgressBar: Bool = true
+    @State private var showProductDebugAlert: Bool = false
+    @State private var productDebugText: String = ""
 
     // MARK: – Widget Mode
 
@@ -200,6 +202,13 @@ struct AppMainView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        Button("Debug: Show Store Product") {
+                            productDebugText = String(describing: store.debug)
+                            showProductDebugAlert = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.horizontal)
+                       
                         Text("Deadline")
                             .font(.system(size: 20).bold())
                             .padding(.horizontal)
@@ -306,6 +315,11 @@ struct AppMainView: View {
         .onAppear {
             loadFromWidgetDefaults()
         }
+        .alert("Store Product Debug", isPresented: $showProductDebugAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(productDebugText)
+        }
         
        
     }
@@ -392,6 +406,7 @@ struct AppMainView: View {
                 isDeadlineActive: isDeadlineActive,
                 todayColor: todayColor,
                 deadlineColor: deadlineColor,
+                daySize: 10,
                 circleSize: 40,
                 gridSpacing: 2)
             .padding(.bottom)
@@ -455,10 +470,11 @@ struct AppMainView: View {
                     isDeadlineActive: isDeadlineActive,
                     todayColor: todayColor,
                     deadlineColor: deadlineColor,
+                    daySize: 13,
                     circleSize: 40,
                     gridSpacing: 2)
             }
-            .scaleEffect(0.60)
+            .scaleEffect(0.55)
             .frame(width: 132)
             .padding(.trailing, 20)
         }
@@ -527,23 +543,36 @@ final class StoreViewModel: ObservableObject {
     
     @Published var product: Product?
     @Published var isPurchased = false
+    @Published var debug: String?
     
     init() {
-        listenForTransaction() //this was a chat suggestion and not in the tuturial; nonetheless seems to make sense that this function should be called?
+        print("[StoreKit] StoreViewModel initialized")
+
+        listenForTransaction()
+
         Task {
+            print("[StoreKit] Starting product load task")
             await loadProduct()
+
+            print("[StoreKit] Checking purchase status")
             await updatePurchaseStatus()
         }
     }
     
     func loadProduct() async {
-        if let loaded = try? await Product.products(for: [productIdentifier]).first {
-            product = loaded
+            if let loaded = try? await Product.products(for: [productIdentifier]).first {
+                product = loaded
+            }
+        debug = product?.description
         }
-    }
     
     func purchase() async {
-        guard let product else { return }
+        guard let product else {
+            print("[StoreKit] Purchase attempted but product is nil")
+            return
+        }
+
+        print("[StoreKit] Attempting purchase for product:", product.id)
         
         if case .success(let result) = try? await product.purchase(),
            case .verified(let trasaction) = result {
@@ -553,12 +582,14 @@ final class StoreViewModel: ObservableObject {
     }
     
     func updatePurchaseStatus() async{
+        print("[StoreKit] Checking latest transaction for:", productIdentifier)
         if let result = await Transaction.latest(for: productIdentifier),
            case .verified(let transaction) = result {
             isPurchased = (transaction.revocationDate == nil)
         } else {
             isPurchased = false
         }
+    
     }
     
     private func listenForTransaction() {
@@ -576,6 +607,6 @@ final class StoreViewModel: ObservableObject {
 
 #Preview {
     AppMainView(
-        date: Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 11))!
+        date: Calendar.current.date(from: DateComponents(year: 2026, month: 5, day: 5))!
     )
 }
