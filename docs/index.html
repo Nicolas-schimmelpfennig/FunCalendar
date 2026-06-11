@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FunCalendar – Support</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.6;
+    }
+
+    header {
+      background: #1d1d1f;
+      color: #f5f5f7;
+      padding: 48px 24px 40px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 10px;
+      font-size: 1.1rem;
+      color: #a1a1a6;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    section {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+
+    section h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1d1d1f;
+    }
+
+    section p {
+      font-size: 0.97rem;
+      color: #3a3a3c;
+      margin-bottom: 12px;
+    }
+
+    section p:last-child { margin-bottom: 0; }
+
+    .faq-item { margin-bottom: 20px; }
+    .faq-item:last-child { margin-bottom: 0; }
+
+    .faq-item strong {
+      display: block;
+      font-size: 0.97rem;
+      margin-bottom: 4px;
+    }
+
+    a {
+      color: #0071e3;
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    .contact-link {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: #0071e3;
+      color: #ffffff;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .contact-link:hover {
+      background: #0077ed;
+      text-decoration: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.85rem;
+      color: #6e6e73;
+    }
+
+    footer a { color: #6e6e73; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>FunCalendar</h1>
+    <p>A beautiful countdown widget for iOS</p>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>About the App</h2>
+      <p>FunCalendar is an iOS widget app that displays a stylised monthly calendar on your home screen. Set a deadline and watch the days count down with a colourful progress bar — right from your lock screen or home screen.</p>
+      <p>The app is developed by Nicolas Schimmelpfennig.</p>
+    </section>
+
+    <section>
+      <h2>Frequently Asked Questions</h2>
+
+      <div class="faq-item">
+        <strong>How do I set my deadline?</strong>
+        <p>Open the FunCalendar app, enable the "Deadline active" toggle, and pick a date using the date picker. The widget updates automatically.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>The widget isn't updating. What do I do?</strong>
+        <p>Try opening the app and making a small change to any setting — this forces the widget to refresh. If it still doesn't update, remove and re-add the widget from your home screen.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>I purchased the Lifetime License but customisation is still locked.</strong>
+        <p>Open the app and tap "Restore Purchase". This retrieves your previous purchase from the App Store at no charge.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>Can I use the app on multiple devices?</strong>
+        <p>Yes. The Lifetime License is tied to your Apple ID, not a single device. Sign in with the same Apple ID and use "Restore Purchase" on each device.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>How do I request a refund?</strong>
+        <p>Refunds are handled by Apple. Visit <a href="https://reportaproblem.apple.com" target="_blank">reportaproblem.apple.com</a> to submit a refund request.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Contact Support</h2>
+      <p>Have a question that isn't answered above, or found a bug? Send an email and I'll get back to you as soon as I can.</p>
+      <a class="contact-link" href="mailto:schimmelpfennig.nicolas@gmail.com">Email Support</a>
+    </section>
+
+    <section>
+      <h2>Privacy</h2>
+      <p>FunCalendar does not collect any personal data. All settings are stored locally on your device and are never transmitted anywhere.</p>
+      <p><a href="privacy.html">Read the full Privacy Policy →</a></p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>© <span id="yr"></span> Nicolas Schimmelpfennig &nbsp;·&nbsp; <a href="privacy.html">Privacy Policy</a></p>
+    <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
+  </footer>
+
+</body>
+</html>
