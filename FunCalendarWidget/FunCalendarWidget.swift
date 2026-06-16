@@ -10,6 +10,12 @@ import SwiftUI
 
 private let appGroupID = "group.com.nicolas.funCalendar"
 
+enum BgAppearanceMode: String {
+    case dynamic = "dynamic"
+    case light = "light"
+    case dark = "dark"
+}
+
 struct WidgetAppState {
     let referenceDate: Date
     let startDate: Date?
@@ -18,6 +24,9 @@ struct WidgetAppState {
     let showProgressBar: Bool
     let todayColor: Color
     let deadlineColor: Color
+    let lightBgColor: Color
+    let darkBgColor: Color
+    let bgAppearanceMode: BgAppearanceMode
 
     var daysRemaining: Int {
         guard isDeadlineActive,
@@ -88,6 +97,27 @@ struct WidgetAppState {
             return Color(uiColor)
         }()
 
+        let lightBgColor: Color = {
+            guard isPurchased,
+                  let data = defaults?.data(forKey: "lightBgColor"),
+                  let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data)
+            else { return Color(red: 0.8, green: 0.8, blue: 0.8) }
+            return Color(uiColor)
+        }()
+
+        let darkBgColor: Color = {
+            guard isPurchased,
+                  let data = defaults?.data(forKey: "darkBgColor"),
+                  let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data)
+            else { return .black }
+            return Color(uiColor)
+        }()
+
+        let bgAppearanceMode: BgAppearanceMode = {
+            guard let raw = defaults?.string(forKey: "bgAppearanceMode") else { return .dynamic }
+            return BgAppearanceMode(rawValue: raw) ?? .dynamic
+        }()
+
         return WidgetAppState(
             referenceDate: referenceDate,
             startDate: startDate,
@@ -95,7 +125,10 @@ struct WidgetAppState {
             isDeadlineActive: isDeadlineActive,
             showProgressBar: showProgressBar,
             todayColor: todayColor,
-            deadlineColor: deadlineColor
+            deadlineColor: deadlineColor,
+            lightBgColor: lightBgColor,
+            darkBgColor: darkBgColor,
+            bgAppearanceMode: bgAppearanceMode
         )
     }
 }
@@ -153,12 +186,18 @@ struct FunCalendarWidgetEntryView: View {
     }
 
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var effectiveColorScheme: ColorScheme {
+        switch appState.bgAppearanceMode {
+        case .dynamic: return colorScheme
+        case .light:   return .light
+        case .dark:    return .dark
+        }
+    }
 
     var body: some View {
         ZStack {
-            ContainerRelativeShape()
-                .fill(Color.gray.opacity(0))
-
             VStack(alignment: .leading, spacing: 6) {
                 switch family {
                 case .systemLarge:
@@ -166,13 +205,11 @@ struct FunCalendarWidgetEntryView: View {
 
                 case .systemMedium:
                     BarCalendarView(date: entry.date, appState: appState)
-                    
+
                 case .systemSmall:
                     MiniCalendarView(date: entry.date, appState: appState)
                         .fixedSize()
                         .scaleEffect(0.45)
-                       
-                    
 
                 default:
                     Text("Please choose the large, small or medium widget")
@@ -181,7 +218,14 @@ struct FunCalendarWidgetEntryView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            //.padding()
+            .environment(\.colorScheme, effectiveColorScheme)
+        }
+        .containerBackground(for: .widget) {
+            switch appState.bgAppearanceMode {
+            case .dynamic: colorScheme == .dark ? appState.darkBgColor : appState.lightBgColor
+            case .light:   appState.lightBgColor
+            case .dark:    appState.darkBgColor
+            }
         }
     }
 }
@@ -195,8 +239,6 @@ struct FunCalendarWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             FunCalendarWidgetEntryView(entry: entry)
-                .containerBackground(.black.opacity(0.2), for: .widget)
-                
         }
         .contentMarginsDisabled()
         .supportedFamilies( [.systemSmall, .systemMedium, .systemLarge] )
@@ -457,7 +499,10 @@ struct BarCalendarView: View {
             isDeadlineActive: true,
             showProgressBar: true,
             todayColor: .orange,
-            deadlineColor: .cyan
+            deadlineColor: .cyan,
+            lightBgColor: Color(red: 0.8, green: 0.8, blue: 0.8),
+            darkBgColor: .black,
+            bgAppearanceMode: .dynamic
         )
     )
 }

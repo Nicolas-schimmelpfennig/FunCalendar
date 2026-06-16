@@ -23,9 +23,28 @@ struct AppMainView: View {
     @State private var tempStartDate = Date()
     @State private var todayColor: Color = .orange
     @State private var deadlineColor: Color = Color(red: 0.3, green: 1, blue: 1, opacity: 1)
+    @State private var lightBgColor: Color = Color(red: 0.8, green: 0.8, blue: 0.8)
+    @State private var darkBgColor: Color = .black
+    @State private var bgAppearanceMode: BgAppearanceMode = .dynamic
     @State private var isDeadlineActive: Bool = true
     @State private var showProgressBar: Bool = true
     @State private var showAbout: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    enum BgAppearanceMode: String, CaseIterable, Identifiable {
+        case dynamic = "dynamic"
+        case light = "light"
+        case dark = "dark"
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .dynamic: return "Dynamic"
+            case .light:   return "Light"
+            case .dark:    return "Dark"
+            }
+        }
+    }
 
     // MARK: – Widget Mode
 
@@ -151,7 +170,7 @@ struct AppMainView: View {
 
     // MARK: – Main Layout
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             
 
             // MODE SWITCHER
@@ -290,6 +309,14 @@ struct AppMainView: View {
                             Text("Colors")
                                 .font(.system(size: 20).bold())
 
+                            Picker("Background mode", selection: $bgAppearanceMode) {
+                                ForEach(BgAppearanceMode.allCases) { mode in
+                                    Text(mode.label).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .onChange(of: bgAppearanceMode) { _, _ in saveToWidgetDefaults() }
+
                             HStack {
                                 Text("Today")
                                 Spacer()
@@ -312,9 +339,33 @@ struct AppMainView: View {
                                 }
                             }
 
+                            HStack {
+                                Text("Background (Light mode)")
+                                Spacer()
+                                ColorPicker("", selection: $lightBgColor, supportsOpacity: false)
+                                    .labelsHidden()
+                                    .onChange(of: lightBgColor) { _, _ in
+                                        saveToWidgetDefaults()
+                                    }
+                            }
+
+                            HStack {
+                                Text("Background (Dark mode)")
+                                Spacer()
+                                ColorPicker("", selection: $darkBgColor, supportsOpacity: false)
+                                    .labelsHidden()
+                                    .onChange(of: darkBgColor) { _, _ in
+                                        saveToWidgetDefaults()
+                                    }
+                            }
+
                             Button("Reset colors") {
                                 todayColor = .orange
                                 deadlineColor = Color(red: 0.3, green: 1, blue: 1, opacity: 1)
+                                lightBgColor = Color(red: 0.8, green: 0.8, blue: 0.8)
+                                darkBgColor = .black
+                                bgAppearanceMode = .dynamic
+                                saveToWidgetDefaults()
                             }
                             .buttonStyle(.borderedProminent)
 
@@ -327,21 +378,30 @@ struct AppMainView: View {
                 .frame(maxHeight: .infinity)
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(25)
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
             }
-            Button("About") {
-                showAbout = true
+            HStack (alignment: .center, spacing: 10) {
+                Spacer()
+                Button("About") {
+                    showAbout = true
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                Spacer()
             }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
 
         }
         .padding(.top)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(.black.opacity(0.1)))
         .sheet(isPresented: $showAbout) {
-            AboutView()
+            AboutView(store: store)
                 .presentationDetents([.large])
         }
         //.ignoresSafeArea()
@@ -349,6 +409,22 @@ struct AppMainView: View {
             loadFromWidgetDefaults()
         }
        
+    }
+
+    private var effectivePreviewBgColor: Color {
+        switch bgAppearanceMode {
+        case .dynamic: return colorScheme == .dark ? darkBgColor : lightBgColor
+        case .light:   return lightBgColor
+        case .dark:    return darkBgColor
+        }
+    }
+
+    private var effectiveWidgetColorScheme: ColorScheme {
+        switch bgAppearanceMode {
+        case .dynamic: return colorScheme
+        case .light:   return .light
+        case .dark:    return .dark
+        }
     }
 
     // MARK: – Widget Preview Container
@@ -361,7 +437,7 @@ struct AppMainView: View {
             )
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(.black.opacity(0.1)))
+                    .fill(effectivePreviewBgColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -378,6 +454,7 @@ struct AppMainView: View {
                 barWidgetLayout
             }
         }
+        .environment(\.colorScheme, effectiveWidgetColorScheme)
     }
 
     // MARK: – Large Widget Layout
@@ -534,6 +611,21 @@ private func loadFromWidgetDefaults() {
        let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data) {
         deadlineColor = Color(uiColor)
     }
+
+    if let data = defaults.data(forKey: "lightBgColor"),
+       let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data) {
+        lightBgColor = Color(uiColor)
+    }
+
+    if let data = defaults.data(forKey: "darkBgColor"),
+       let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data) {
+        darkBgColor = Color(uiColor)
+    }
+
+    if let raw = defaults.string(forKey: "bgAppearanceMode"),
+       let mode = BgAppearanceMode(rawValue: raw) {
+        bgAppearanceMode = mode
+    }
 }
 
 private func saveToWidgetDefaults() {
@@ -554,6 +646,19 @@ private func saveToWidgetDefaults() {
     if let data = try? NSKeyedArchiver.archivedData(withRootObject: deadlineUIColor, requiringSecureCoding: false) {
         defaults.set(data, forKey: "deadlineColor")
     }
+
+    let lightBgUIColor = UIColor(lightBgColor)
+    if let data = try? NSKeyedArchiver.archivedData(withRootObject: lightBgUIColor, requiringSecureCoding: false) {
+        defaults.set(data, forKey: "lightBgColor")
+    }
+
+    let darkBgUIColor = UIColor(darkBgColor)
+    if let data = try? NSKeyedArchiver.archivedData(withRootObject: darkBgUIColor, requiringSecureCoding: false) {
+        defaults.set(data, forKey: "darkBgColor")
+    }
+
+    defaults.set(bgAppearanceMode.rawValue, forKey: "bgAppearanceMode")
+
     WidgetCenter.shared.reloadAllTimelines()
 }
 
@@ -615,6 +720,12 @@ final class StoreViewModel: ObservableObject {
         } catch {
             storeError = "Purchase failed: \(error.localizedDescription)"
         }
+    }
+
+    func overridePurchase() {
+        isPurchased = true
+        UserDefaults(suiteName: "group.com.nicolas.funCalendar")?.set(true, forKey: "isPurchased")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func restore() async {
