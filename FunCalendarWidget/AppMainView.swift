@@ -170,235 +170,21 @@ struct AppMainView: View {
 
     // MARK: – Main Layout
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            
+        GeometryReader { geo in
+            // iPhone is locked to portrait (Info.plist), so a landscape
+            // aspect ratio can only occur on iPad.
+            let isLandscape = geo.size.width > geo.size.height
 
-            // MODE SWITCHER
-            Picker("Widget Type", selection: $widgetMode) {
-                ForEach(WidgetMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-
-            HStack {
-                Spacer()
-                widgetContainer {
-                    widgetContent
-                }
-                
-                Spacer()
-            }
-            
-            
-            VStack(alignment: .center) {
-                
-                if store.isPurchased {
-                    Label("Lifetime license active", systemImage: "checkmark.seal.fill")
-                        .frame(maxWidth: .infinity)
-                        .font(.subheadline)
-                    
+            Group {
+                if isLandscape {
+                    landscapeLayout
                 } else {
-                    Label("Purchase a license to unlock widget customization.", systemImage: "newspaper")
-                        .frame(maxWidth: .infinity)
-                        .font(.subheadline)
-                    if let product = store.product {
-                        HStack(spacing: 12) {
-                            Button {
-                                Task { await store.purchase() }
-                            } label: {
-                                Text("Buy \(product.displayPrice)")
-                            }
-                            .buttonStyle(.borderedProminent)
-
-                            Button {
-                                Task { await store.restore() }
-                            } label: {
-                                Text("Restore")
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    } else {
-                        Text("Loading store...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    portraitLayout
                 }
             }
-            .padding(.horizontal)
-                        
-            //Spacer(minLength: 24)
-            
-            // MARK: settings
-
-            VStack(alignment: .leading, spacing: 8) {
-
-                Text("Settings")
-                    .font(.title.bold())
-                    .padding(.horizontal)
-                
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-
-                        // MARK: Store status
-                        HStack(spacing: 6) {
-                            Image(systemName: store.storeError == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundStyle(store.storeError == nil ? .green : .orange)
-                            Text(store.storeError ?? "Store ready")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal)
-
-                        Text("Deadline")
-                            .font(.system(size: 20).bold())
-                            .padding(.horizontal)
-                      
-                        // DEADLINE TOGGLE
-                        Toggle("Deadline active", isOn: $isDeadlineActive)
-                            .padding(.horizontal)
-                            .onChange(of: isDeadlineActive) { _, _ in
-                                saveToWidgetDefaults()
-                            }
-                        
-
-                        // DATE SELECTION
-                        if isDeadlineActive {
-                            VStack(alignment: .leading, spacing: 12) {
-                                
-                                // DEADLINE DATE SELECTION
-                                DatePicker(
-                                    "Select deadline",
-                                    selection: $tempSelectedDate,
-                                    displayedComponents: [.date]
-                                )
-                                .datePickerStyle(.compact)
-                                .onChange(of: tempSelectedDate) { _, newValue in
-                                    Deadline = max(newValue, startDate)
-                                    saveToWidgetDefaults()
-                                }
-                                Toggle("Show Progress Bar", isOn: $showProgressBar)
-                                    .onChange(of: showProgressBar) { _, _ in
-                                        saveToWidgetDefaults()
-                                    }
-                            }
-                            .padding(.horizontal)
-                            if showProgressBar {
-                                // START DATE SELECTION
-                                
-                                DatePicker(
-                                    "Select start date",
-                                    selection: $tempStartDate,
-                                    displayedComponents: [.date]
-                                )
-                                .datePickerStyle(.compact)
-                                .onChange(of: tempStartDate) { _, newValue in
-                                    startDate = min(newValue, Deadline)
-                                    saveToWidgetDefaults()
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
-                        
-                        Divider()
-                        // COLOR SELECTION
-                        VStack(alignment: .leading, spacing: 12) {
-
-                            Text("Colors")
-                                .font(.system(size: 20).bold())
-
-                            Picker("Background mode", selection: $bgAppearanceMode) {
-                                ForEach(BgAppearanceMode.allCases) { mode in
-                                    Text(mode.label).tag(mode)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .onChange(of: bgAppearanceMode) { _, _ in saveToWidgetDefaults() }
-
-                            HStack {
-                                Text("Today")
-                                Spacer()
-                                ColorPicker("", selection: $todayColor, supportsOpacity: true)
-                                    .labelsHidden()
-                                    .onChange(of: todayColor) { _, _ in
-                                        saveToWidgetDefaults()
-                                    }
-                            }
-
-                            if isDeadlineActive {
-                                HStack {
-                                    Text("Deadline")
-                                    Spacer()
-                                    ColorPicker("", selection: $deadlineColor, supportsOpacity: true)
-                                        .labelsHidden()
-                                        .onChange(of: deadlineColor) { _, _ in
-                                            saveToWidgetDefaults()
-                                        }
-                                }
-                            }
-
-                            HStack {
-                                Text("Background (Light mode)")
-                                Spacer()
-                                ColorPicker("", selection: $lightBgColor, supportsOpacity: false)
-                                    .labelsHidden()
-                                    .onChange(of: lightBgColor) { _, _ in
-                                        saveToWidgetDefaults()
-                                    }
-                            }
-
-                            HStack {
-                                Text("Background (Dark mode)")
-                                Spacer()
-                                ColorPicker("", selection: $darkBgColor, supportsOpacity: false)
-                                    .labelsHidden()
-                                    .onChange(of: darkBgColor) { _, _ in
-                                        saveToWidgetDefaults()
-                                    }
-                            }
-
-                            Button("Reset colors") {
-                                todayColor = .orange
-                                deadlineColor = Color(red: 0.3, green: 1, blue: 1, opacity: 1)
-                                lightBgColor = Color(red: 0.8, green: 0.8, blue: 0.8)
-                                darkBgColor = .black
-                                bgAppearanceMode = .dynamic
-                                saveToWidgetDefaults()
-                            }
-                            .buttonStyle(.borderedProminent)
-
-                        }
-                        .padding(.horizontal)
-                    }
-                    .padding(.init(top: 25, leading: 8, bottom: 25, trailing: 8))
-                                        
-                }
-                .frame(maxHeight: .infinity)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(25)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-            }
-            HStack (alignment: .center, spacing: 10) {
-                Spacer()
-                Button("About") {
-                    showAbout = true
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .padding(.top)
-        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(.black.opacity(0.1)))
         .sheet(isPresented: $showAbout) {
             AboutView(store: store)
@@ -408,7 +194,271 @@ struct AppMainView: View {
         .onAppear {
             loadFromWidgetDefaults()
         }
-       
+    }
+
+    // MARK: – Portrait Layout (iPhone + iPad portrait)
+    private var portraitLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            modeSwitcher
+            widgetPreview
+            purchaseStatus
+            settingsPane
+            footer
+        }
+    }
+
+    // MARK: – Landscape Layout (iPad only): preview left, settings right
+    private var landscapeLayout: some View {
+        HStack(alignment: .top, spacing: 0) {
+
+            // LEFT – widget preview
+            VStack(alignment: .leading, spacing: 8) {
+                modeSwitcher
+                widgetPreview
+                purchaseStatus
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            // RIGHT – settings
+            VStack(alignment: .leading, spacing: 8) {
+                settingsPane
+                footer
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    // MARK: – Mode Switcher
+    private var modeSwitcher: some View {
+        Picker("Widget Type", selection: $widgetMode) {
+            ForEach(WidgetMode.allCases) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+    }
+
+    // MARK: – Widget Preview
+    private var widgetPreview: some View {
+        HStack {
+            Spacer()
+            widgetContainer {
+                widgetContent
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: – Purchase Status
+    private var purchaseStatus: some View {
+        VStack(alignment: .center) {
+
+            if store.isPurchased {
+                Label("Lifetime license active", systemImage: "checkmark.seal.fill")
+                    .frame(maxWidth: .infinity)
+                    .font(.subheadline)
+
+            } else {
+                Label("Purchase a license to unlock widget customization.", systemImage: "newspaper")
+                    .frame(maxWidth: .infinity)
+                    .font(.subheadline)
+                if let product = store.product {
+                    HStack(spacing: 12) {
+                        Button {
+                            Task { await store.purchase() }
+                        } label: {
+                            Text("Buy \(product.displayPrice)")
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            Task { await store.restore() }
+                        } label: {
+                            Text("Restore")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else {
+                    Text("Loading store...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    // MARK: – Settings Pane
+    private var settingsPane: some View {
+        VStack(alignment: .leading, spacing: 8) {
+
+            Text("Settings")
+                .font(.title.bold())
+                .padding(.horizontal)
+
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+
+                    // MARK: Store status
+                    HStack(spacing: 6) {
+                        Image(systemName: store.storeError == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(store.storeError == nil ? .green : .orange)
+                        Text(store.storeError ?? "Store ready")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+
+                    Text("Deadline")
+                        .font(.system(size: 20).bold())
+                        .padding(.horizontal)
+
+                    // DEADLINE TOGGLE
+                    Toggle("Deadline active", isOn: $isDeadlineActive)
+                        .padding(.horizontal)
+                        .onChange(of: isDeadlineActive) { _, _ in
+                            saveToWidgetDefaults()
+                        }
+
+
+                    // DATE SELECTION
+                    if isDeadlineActive {
+                        VStack(alignment: .leading, spacing: 12) {
+
+                            // DEADLINE DATE SELECTION
+                            DatePicker(
+                                "Select deadline",
+                                selection: $tempSelectedDate,
+                                displayedComponents: [.date]
+                            )
+                            .datePickerStyle(.compact)
+                            .onChange(of: tempSelectedDate) { _, newValue in
+                                Deadline = max(newValue, startDate)
+                                saveToWidgetDefaults()
+                            }
+                            Toggle("Show Progress Bar", isOn: $showProgressBar)
+                                .onChange(of: showProgressBar) { _, _ in
+                                    saveToWidgetDefaults()
+                                }
+                        }
+                        .padding(.horizontal)
+                        if showProgressBar {
+                            // START DATE SELECTION
+
+                            DatePicker(
+                                "Select start date",
+                                selection: $tempStartDate,
+                                displayedComponents: [.date]
+                            )
+                            .datePickerStyle(.compact)
+                            .onChange(of: tempStartDate) { _, newValue in
+                                startDate = min(newValue, Deadline)
+                                saveToWidgetDefaults()
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+
+                    Divider()
+                    // COLOR SELECTION
+                    VStack(alignment: .leading, spacing: 12) {
+
+                        Text("Colors")
+                            .font(.system(size: 20).bold())
+
+                        Picker("Background mode", selection: $bgAppearanceMode) {
+                            ForEach(BgAppearanceMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: bgAppearanceMode) { _, _ in saveToWidgetDefaults() }
+
+                        HStack {
+                            Text("Today")
+                            Spacer()
+                            ColorPicker("", selection: $todayColor, supportsOpacity: true)
+                                .labelsHidden()
+                                .onChange(of: todayColor) { _, _ in
+                                    saveToWidgetDefaults()
+                                }
+                        }
+
+                        if isDeadlineActive {
+                            HStack {
+                                Text("Deadline")
+                                Spacer()
+                                ColorPicker("", selection: $deadlineColor, supportsOpacity: true)
+                                    .labelsHidden()
+                                    .onChange(of: deadlineColor) { _, _ in
+                                        saveToWidgetDefaults()
+                                    }
+                            }
+                        }
+
+                        HStack {
+                            Text("Background (Light mode)")
+                            Spacer()
+                            ColorPicker("", selection: $lightBgColor, supportsOpacity: false)
+                                .labelsHidden()
+                                .onChange(of: lightBgColor) { _, _ in
+                                    saveToWidgetDefaults()
+                                }
+                        }
+
+                        HStack {
+                            Text("Background (Dark mode)")
+                            Spacer()
+                            ColorPicker("", selection: $darkBgColor, supportsOpacity: false)
+                                .labelsHidden()
+                                .onChange(of: darkBgColor) { _, _ in
+                                    saveToWidgetDefaults()
+                                }
+                        }
+
+                        Button("Reset colors") {
+                            todayColor = .orange
+                            deadlineColor = Color(red: 0.3, green: 1, blue: 1, opacity: 1)
+                            lightBgColor = Color(red: 0.8, green: 0.8, blue: 0.8)
+                            darkBgColor = .black
+                            bgAppearanceMode = .dynamic
+                            saveToWidgetDefaults()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.init(top: 25, leading: 8, bottom: 25, trailing: 8))
+
+            }
+            .frame(maxHeight: .infinity)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(25)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+        }
+    }
+
+    // MARK: – Footer (About + version)
+    private var footer: some View {
+        HStack (alignment: .center, spacing: 10) {
+            Spacer()
+            Button("About") {
+                showAbout = true
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 6)
     }
 
     private var effectivePreviewBgColor: Color {
