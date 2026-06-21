@@ -269,9 +269,14 @@ struct AppMainView: View {
                         Button {
                             Task { await store.purchase() }
                         } label: {
-                            Text("Buy \(product.displayPrice)")
+                            if store.isPurchasing {
+                                ProgressView()
+                            } else {
+                                Text("Buy \(product.displayPrice)")
+                            }
                         }
                         .buttonStyle(.borderedProminent)
+                        .disabled(store.isPurchasing)
 
                         Button {
                             Task { await store.restore() }
@@ -279,6 +284,7 @@ struct AppMainView: View {
                             Text("Restore")
                         }
                         .buttonStyle(.bordered)
+                        .disabled(store.isPurchasing)
                     }
                 } else {
                     Text("Loading store...")
@@ -302,15 +308,17 @@ struct AppMainView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
 
-                    // MARK: Store status
-                    HStack(spacing: 6) {
-                        Image(systemName: store.storeError == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(store.storeError == nil ? .green : .orange)
-                        Text(store.storeError ?? "Store ready")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                    // MARK: Store status (debug-only, gated behind developer override)
+                    if store.developerMode {
+                        HStack(spacing: 6) {
+                            Image(systemName: store.storeError == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundStyle(store.storeError == nil ? .green : .orange)
+                            Text(store.storeError ?? "Store ready")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
 
                     Text("Deadline")
                         .font(.system(size: 20).bold())
@@ -717,12 +725,18 @@ private func saveToWidgetDefaults() {
 @MainActor
 final class StoreViewModel: ObservableObject {
     private let productIdentifier = "com.funcalendar.app.license"
+    private let appGroupID = "group.com.nicolas.funCalendar"
 
     @Published var product: Product?
     @Published var isPurchased = false
     @Published var storeError: String?
+    /// True while a purchase is in flight; used to show a spinner and block re-taps.
+    @Published var isPurchasing = false
+    /// Reveals debug-only store status UI. Toggled via the hidden override in About.
+    @Published var developerMode = false
 
     init() {
+        developerMode = UserDefaults(suiteName: appGroupID)?.bool(forKey: "developerMode") ?? false
         listenForTransaction()
         Task {
             await loadProduct()
@@ -748,6 +762,9 @@ final class StoreViewModel: ObservableObject {
             storeError = "Cannot purchase: product not loaded yet."
             return
         }
+        guard !isPurchasing else { return }
+        isPurchasing = true
+        defer { isPurchasing = false }
         do {
             let result = try await product.purchase()
             switch result {
@@ -774,8 +791,18 @@ final class StoreViewModel: ObservableObject {
 
     func overridePurchase() {
         isPurchased = true
-        UserDefaults(suiteName: "group.com.nicolas.funCalendar")?.set(true, forKey: "isPurchased")
+        developerMode = true
+        let defaults = UserDefaults(suiteName: appGroupID)
+        defaults?.set(true, forKey: "isPurchased")
+        defaults?.set(true, forKey: "developerMode")
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Turns off the developer override: hides debug UI and restores the real purchase state.
+    func disableDeveloperOverride() {
+        developerMode = false
+        UserDefaults(suiteName: appGroupID)?.set(false, forKey: "developerMode")
+        Task { await updatePurchaseStatus() }
     }
 
     func restore() async {

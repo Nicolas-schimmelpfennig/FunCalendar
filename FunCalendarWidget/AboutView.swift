@@ -122,13 +122,23 @@ All billing is handled by Apple through the App Store. Purchases are subject to 
                         .foregroundStyle(.tertiary)
 
                     // MARK: Developer Override
-                    Button {
-                        passwordInput = ""
-                        showPasswordPrompt = true
-                    } label: {
-                        Label("Developer Override", systemImage: "lock.open")
-                            .font(.footnote)
-                            .foregroundStyle(.tertiary)
+                    if store.developerMode {
+                        Button {
+                            store.disableDeveloperOverride()
+                        } label: {
+                            Label("Disable Developer Override", systemImage: "lock.open")
+                                .font(.footnote)
+                                .foregroundStyle(.tertiary)
+                        }
+                    } else {
+                        Button {
+                            passwordInput = ""
+                            showPasswordPrompt = true
+                        } label: {
+                            Label("Developer Override", systemImage: "lock")
+                                .font(.footnote)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
 
                     Spacer(minLength: 32)
