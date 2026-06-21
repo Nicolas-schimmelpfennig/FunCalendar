@@ -27,8 +27,13 @@ struct MiniCalendarGridView: View {
     let todayColor: Color
     let deadlineColor: Color
     
+    let daySize: CGFloat
+
     let circleSize: CGFloat          // 40 for large, 18 for bar, etc.
-    let gridSpacing: CGFloat         // spacing between circles
+    let gridSpacingX: CGFloat        // horizontal spacing between circles
+    let gridSpacingY: CGFloat        // vertical spacing between rows
+    let headerSpacing: CGFloat       // spacing between weekday header row and first circle row
+    let headerLabelSpacing: CGFloat  // spacing between the day abbreviation labels
     
     // MARK: - Calendar
     
@@ -58,7 +63,7 @@ struct MiniCalendarGridView: View {
     // MARK: - Grid Dates (7x5 = 35 cells)
     
     private var gridDates: [Date] {
-        let totalCells = 35
+        let totalCells = 42
         let firstVisibleDate = calendar.date(byAdding: .day,
                                              value: -firstWeekdayOffset,
                                              to: monthStart)!
@@ -71,23 +76,23 @@ struct MiniCalendarGridView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack {
+        VStack(spacing: headerSpacing) {
             let mondayFirst = Array(calendar.shortWeekdaySymbols[1...6]) + [calendar.shortWeekdaySymbols[0]]
 
-            HStack(spacing: 4) {
+            HStack(spacing: headerLabelSpacing) {
                 ForEach(mondayFirst, id: \.self) { symbol in
                     Text(symbol.prefix(2))
-                        .font(.system(size:10, weight: .medium))
+                        .font(.system(size:daySize, weight: .medium))
                         .frame(width: 38)
                         .opacity(1)
                 }
             }
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.fixed(circleSize), spacing: gridSpacing),
+                    repeating: GridItem(.fixed(circleSize), spacing: gridSpacingX),
                     count: 7
                 ),
-                spacing: gridSpacing
+                spacing: gridSpacingY
             ) {
                 ForEach(gridDates, id: \.self) { d in
                     CalendarCircleView(
@@ -103,6 +108,7 @@ struct MiniCalendarGridView: View {
                 }
             }
         }
+        //.background(Color.red)
     }
 }
 
@@ -130,19 +136,13 @@ private struct CalendarCircleView: View {
     var body: some View {
         let isCurrentMonth = calendar.component(.month, from: date) == month
         
-        Group {
-            if isCurrentMonth {
-                Circle()
-                    .fill(circleColor(for: date))
-                    .overlay(
-                        Circle()
-                            .stroke(Color.primary.opacity(0.5), lineWidth: 0.7)
-                    )
-            } else {
+        Circle()
+            .fill(circleColor(for: date))
+            .overlay(
                 Circle()
                     .stroke(Color.primary.opacity(0.5), lineWidth: 0.7)
-            }
-        }
+            )
+            //.opacity(isCurrentMonth ? 1 : 0.3)
         .frame(width: circleSize, height: circleSize)
     }
     
@@ -168,6 +168,12 @@ private struct CalendarCircleView: View {
             return .primary
         }
         
+        // Dates outside current month (excluding deadline)
+        if calendar.component(.month, from: d) != month &&
+            !calendar.isDate(d, inSameDayAs: deadline) {
+            return .primary.opacity(0)
+        }
+        
         // Future dates
         return Color.gray.opacity(0.3)
     }
@@ -177,12 +183,16 @@ private struct CalendarCircleView: View {
     MiniCalendarGridView(
         baseDate: Date(),
         startDate: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
-        deadline: Calendar.current.date(byAdding: .day, value: 10, to: Date())!,
+        deadline: Calendar.current.date(byAdding: .day, value: 27, to: Date())!,
         isDeadlineActive: true,
         todayColor: .orange,
         deadlineColor: .cyan,
+        daySize: 10,
         circleSize: 40,
-        gridSpacing: 2
+        gridSpacingX: 2,
+        gridSpacingY: 2,
+        headerSpacing: 4,
+        headerLabelSpacing: 4
     )
     .padding()
     

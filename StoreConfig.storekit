@@ -32,64 +32,81 @@
   ],
   "settings" : {
     "_applicationInternalID" : "6760355945",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
     "_developerTeamID" : "226AMQMFG9",
+    "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 795028061.99397397,
+    "_lastSynchronizedDate" : 803737539.38213396,
     "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
     "_storeKitErrors" : [
       {
-        "current" : null,
+        "current" : {
+          "index" : 2,
+          "type" : "generic"
+        },
         "enabled" : false,
         "name" : "Load Products"
       },
       {
-        "current" : null,
+        "current" : {
+          "index" : 1,
+          "type" : "purchase"
+        },
         "enabled" : false,
         "name" : "Purchase"
       },
       {
-        "current" : null,
+        "current" : {
+          "index" : 0,
+          "type" : "verification"
+        },
         "enabled" : false,
         "name" : "Verification"
       },
       {
-        "current" : null,
+        "current" : {
+          "index" : 2,
+          "type" : "generic"
+        },
         "enabled" : false,
         "name" : "App Store Sync"
       },
       {
-        "current" : null,
+        "current" : {
+          "index" : 2,
+          "type" : "generic"
+        },
         "enabled" : false,
         "name" : "Subscription Status"
       },
       {
-        "current" : null,
         "enabled" : false,
         "name" : "App Transaction"
       },
       {
-        "current" : null,
         "enabled" : false,
         "name" : "Manage Subscriptions Sheet"
       },
       {
-        "current" : null,
         "enabled" : false,
         "name" : "Refund Request Sheet"
       },
       {
-        "current" : null,
         "enabled" : false,
         "name" : "Offer Code Redeem Sheet"
       }
-    ]
+    ],
+    "_timeRate" : 0
   },
   "subscriptionGroups" : [
 
   ],
   "version" : {
-    "major" : 4,
+    "major" : 5,
     "minor" : 0
   }
 }

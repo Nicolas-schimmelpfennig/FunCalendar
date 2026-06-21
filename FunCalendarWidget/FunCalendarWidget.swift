@@ -10,6 +10,12 @@ import SwiftUI
 
 private let appGroupID = "group.com.nicolas.funCalendar"
 
+enum BgAppearanceMode: String {
+    case dynamic = "dynamic"
+    case light = "light"
+    case dark = "dark"
+}
+
 struct WidgetAppState {
     let referenceDate: Date
     let startDate: Date?
@@ -18,6 +24,9 @@ struct WidgetAppState {
     let showProgressBar: Bool
     let todayColor: Color
     let deadlineColor: Color
+    let lightBgColor: Color
+    let darkBgColor: Color
+    let bgAppearanceMode: BgAppearanceMode
 
     var daysRemaining: Int {
         guard isDeadlineActive,
@@ -70,7 +79,8 @@ struct WidgetAppState {
 
         let startDate = defaults?.object(forKey: "startDate") as? Date
         let deadline = defaults?.object(forKey: "deadline") as? Date
-        let isDeadlineActive = defaults?.bool(forKey: "isDeadlineActive") ?? false
+        let isPurchased = defaults?.bool(forKey: "isPurchased") ?? false
+        let isDeadlineActive = isPurchased && (defaults?.bool(forKey: "isDeadlineActive") ?? false)
         let showProgressBar = defaults?.bool(forKey: "showProgressBar") ?? false
 
         let todayColor: Color = {
@@ -87,6 +97,27 @@ struct WidgetAppState {
             return Color(uiColor)
         }()
 
+        let lightBgColor: Color = {
+            guard isPurchased,
+                  let data = defaults?.data(forKey: "lightBgColor"),
+                  let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data)
+            else { return Color(red: 0.8, green: 0.8, blue: 0.8) }
+            return Color(uiColor)
+        }()
+
+        let darkBgColor: Color = {
+            guard isPurchased,
+                  let data = defaults?.data(forKey: "darkBgColor"),
+                  let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: data)
+            else { return .black }
+            return Color(uiColor)
+        }()
+
+        let bgAppearanceMode: BgAppearanceMode = {
+            guard let raw = defaults?.string(forKey: "bgAppearanceMode") else { return .dynamic }
+            return BgAppearanceMode(rawValue: raw) ?? .dynamic
+        }()
+
         return WidgetAppState(
             referenceDate: referenceDate,
             startDate: startDate,
@@ -94,7 +125,10 @@ struct WidgetAppState {
             isDeadlineActive: isDeadlineActive,
             showProgressBar: showProgressBar,
             todayColor: todayColor,
-            deadlineColor: deadlineColor
+            deadlineColor: deadlineColor,
+            lightBgColor: lightBgColor,
+            darkBgColor: darkBgColor,
+            bgAppearanceMode: bgAppearanceMode
         )
     }
 }
@@ -139,6 +173,7 @@ struct Provider: AppIntentTimelineProvider {
 struct DayEntry: TimelineEntry {
     let date: Date
     let configuration: ConfigurationAppIntent
+    var previewState: WidgetAppState? = nil
 }
 
 
@@ -147,16 +182,22 @@ struct DayEntry: TimelineEntry {
 struct FunCalendarWidgetEntryView: View {
     var entry: DayEntry
     private var appState: WidgetAppState {
-        WidgetAppState.load(referenceDate: entry.date)
+        entry.previewState ?? WidgetAppState.load(referenceDate: entry.date)
     }
 
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var effectiveColorScheme: ColorScheme {
+        switch appState.bgAppearanceMode {
+        case .dynamic: return colorScheme
+        case .light:   return .light
+        case .dark:    return .dark
+        }
+    }
 
     var body: some View {
         ZStack {
-            ContainerRelativeShape()
-                .fill(Color.gray.opacity(0))
-
             VStack(alignment: .leading, spacing: 6) {
                 switch family {
                 case .systemLarge:
@@ -164,9 +205,10 @@ struct FunCalendarWidgetEntryView: View {
 
                 case .systemMedium:
                     BarCalendarView(date: entry.date, appState: appState)
-                    
+
                 case .systemSmall:
                     MiniCalendarView(date: entry.date, appState: appState)
+                        .fixedSize()
                         .scaleEffect(0.45)
 
                 default:
@@ -176,7 +218,14 @@ struct FunCalendarWidgetEntryView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            //.padding()
+            .environment(\.colorScheme, effectiveColorScheme)
+        }
+        .containerBackground(for: .widget) {
+            switch appState.bgAppearanceMode {
+            case .dynamic: colorScheme == .dark ? appState.darkBgColor : appState.lightBgColor
+            case .light:   appState.lightBgColor
+            case .dark:    appState.darkBgColor
+            }
         }
     }
 }
@@ -190,14 +239,27 @@ struct FunCalendarWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             FunCalendarWidgetEntryView(entry: entry)
-                .containerBackground(.black.opacity(0.2), for: .widget)
-                
         }
         .contentMarginsDisabled()
         .supportedFamilies( [.systemSmall, .systemMedium, .systemLarge] )
     }
 }
 
+
+private extension Int {
+    var ordinalSuffix: String {
+        switch self % 100 {
+        case 11, 12, 13: return "th"
+        default:
+            switch self % 10 {
+            case 1: return "st"
+            case 2: return "nd"
+            case 3: return "rd"
+            default: return "th"
+            }
+        }
+    }
+}
 
 // MARK: - Mini Calendar View
 
@@ -224,6 +286,7 @@ struct MiniCalendarView: View {
         calendar.shortWeekdaySymbols[(calendar.component(.weekday, from: date) + 5) % 7]
             .capitalized
     }
+
     
     
     // MARK: Month metadata
@@ -253,47 +316,45 @@ struct MiniCalendarView: View {
     }
     // MARK: Large Calendar View
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 0) {
 
             HStack(alignment: .top, spacing: 5) {
                 Text("\(day)")
-                    .font(.system(size:85, weight: .bold))
+                    .font(.system(size:60, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.1)
                     .allowsTightening(true)
-                    //.background(Color(.red).opacity(0.1))
-
+                    .offset(x: 0, y: -8)
+                  
 
                 VStack(alignment: .trailing) {
                     HStack {
-                        Text("\(monthName.prefix(3))")
-                            .font(.system(size: 25).bold())
+                        Text(day.ordinalSuffix)
+                            .font(.system(size: 20).bold())
+                        
                         Spacer()
+                        
+                        Text("\(monthName.prefix(3))")
+                            .font(.system(size: 20).bold())
+                        
                         Text("\(year.description)")
-                            .font(.system(size:25, weight: .light))
-                            
+                            .font(.system(size:20, weight: .light))
                     }
-                    //.background(Color(.red).opacity(0.1))
-                    Spacer()
                     Text(appState.daysRemainingText)
-                        .font(.system(size: 25, weight: .medium))
+                        .font(.system(size: 20, weight: .medium))
                         .opacity(appState.isDeadlineActive ? 1 : 0)
                         .allowsTightening(true)
                 }
-                //.background(Color(.red).opacity(0.1))
-                .padding(.vertical)
-                
+                .padding(.vertical, 2)
             }
-            //.background(Color(.red).opacity(0.1))
-           
-            
+
             ProgressView(value: appState.progress)
                 .progressViewStyle(.linear)
                 .tint(.primary)
                 .frame(height: 4)
                 .offset(y: -10)
                 .opacity(appState.isDeadlineActive && appState.showProgressBar ? 1 : 0)
-            
+
             MiniCalendarGridView(
                 baseDate: date,
                 startDate: appState.startDate ?? date,
@@ -301,13 +362,20 @@ struct MiniCalendarView: View {
                 isDeadlineActive: appState.isDeadlineActive,
                 todayColor: appState.todayColor,
                 deadlineColor: appState.deadlineColor,
-                circleSize: 40,
-                gridSpacing: 2)
-            .padding(.bottom, 20)
+                daySize: 10,
+                circleSize: 37,
+                gridSpacingX: 2,
+                gridSpacingY: 2,
+                headerSpacing: 5,
+                headerLabelSpacing: 1)
         }
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 35)
+       
     }
 }
+
+
+
 
 
 // MARK: - Bar (Medium) Calendar View
@@ -339,12 +407,16 @@ struct BarCalendarView: View {
                         .offset(x: 0, y: -13)
                         //.background(Color.red.opacity(0.15))
                         
-              
-                    Spacer()
 
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(monthName.prefix(3))
-                            .font(.system(size: 16).bold())
+                        HStack {
+                            Text(day.ordinalSuffix)
+                                .font(.system(size: 16).bold())
+                            Spacer()
+                            Text(monthName.prefix(3))
+                                .font(.system(size: 16).bold())
+                        }
+                        
                         Text("\(year.description)")
                             .font(.system(size:13, weight: .light))
                             //.fixedSize()
@@ -368,7 +440,7 @@ struct BarCalendarView: View {
                     }
                 }
             }
-            .frame(width: 130, height: 135)
+            .frame(width: 150, height: 135)
             .padding(.leading, 13)
             .padding(.top, 5)
             //.background(Color.white)
@@ -385,11 +457,15 @@ struct BarCalendarView: View {
                     isDeadlineActive: appState.isDeadlineActive,
                     todayColor: appState.todayColor,
                     deadlineColor: appState.deadlineColor,
+                    daySize: 13,
                     circleSize: 40,
-                    gridSpacing: 2)
+                    gridSpacingX: 2,
+                gridSpacingY: 2,
+                headerSpacing: 4,
+                headerLabelSpacing: 4)
             }
-            .scaleEffect(0.60)
-            .frame(width: 100, height: 150)
+            .scaleEffect(0.50)
+            .frame(width: 70, height: 150)
             .padding(.trailing, 50)
             
 
@@ -409,12 +485,25 @@ struct BarCalendarView: View {
     )
 }
 
-#Preview("custom date – Large", as: .systemLarge) {
+#Preview("custom date – Medium", as: .systemMedium) {
     FunCalendarWidget()
 } timeline: {
+    let previewDate = Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 10))!
     DayEntry(
-        date: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 28))!,
-        configuration: ConfigurationAppIntent()
+        date: previewDate,
+        configuration: ConfigurationAppIntent(),
+        previewState: WidgetAppState(
+            referenceDate: previewDate,
+            startDate: Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1))!,
+            deadline: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 25))!,
+            isDeadlineActive: true,
+            showProgressBar: true,
+            todayColor: .orange,
+            deadlineColor: .cyan,
+            lightBgColor: Color(red: 0.8, green: 0.8, blue: 0.8),
+            darkBgColor: .black,
+            bgAppearanceMode: .dynamic
+        )
     )
 }
 
