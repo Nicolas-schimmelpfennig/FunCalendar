@@ -19,6 +19,7 @@ struct AboutView: View {
     @State private var showPasswordPrompt = false
     @State private var passwordInput = ""
     @State private var showWrongPassword = false
+    @State private var showRedeemSheet = false
 
     var body: some View {
         NavigationStack {
@@ -121,6 +122,15 @@ All billing is handled by Apple through the App Store. Purchases are subject to 
                         .font(.footnote)
                         .foregroundStyle(.tertiary)
 
+                    // MARK: Redeem Code
+                    Button {
+                        showRedeemSheet = true
+                    } label: {
+                        Label("Redeem a Code", systemImage: "gift")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.bordered)
+
                     // MARK: Developer Override
                     if store.developerMode {
                         Button {
@@ -172,6 +182,15 @@ All billing is handled by Apple through the App Store. Purchases are subject to 
             }
             .alert("Incorrect password", isPresented: $showWrongPassword) {
                 Button("OK", role: .cancel) {}
+            }
+            // Apple's native offer-code redemption sheet.
+            .offerCodeRedemption(isPresented: $showRedeemSheet) { result in
+                switch result {
+                case .success:
+                    Task { await store.updatePurchaseStatus() }
+                case .failure(let error):
+                    store.storeError = "Code redemption failed: \(error.localizedDescription)"
+                }
             }
         }
     }
