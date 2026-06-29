@@ -208,8 +208,6 @@ struct FunCalendarWidgetEntryView: View {
 
                 case .systemSmall:
                     MiniCalendarView(date: entry.date, appState: appState)
-                        .fixedSize()
-                        .scaleEffect(0.45)
 
                 default:
                     Text("Please choose the large, small or medium widget")
@@ -242,6 +240,54 @@ struct FunCalendarWidget: Widget {
         }
         .contentMarginsDisabled()
         .supportedFamilies( [.systemSmall, .systemMedium, .systemLarge] )
+    }
+}
+
+
+// MARK: - Proportional Scaling
+
+/// Widget content sizes on the iPhone 17 Pro — the device every spacing, offset and
+/// font size in this file was hand-tuned on. Each layout is built at these reference
+/// sizes and then uniformly scaled to fit the real widget on any other iPhone, so the
+/// design keeps the same proportions instead of drifting with screen size.
+private enum WidgetReferenceSize {
+    static let large  = CGSize(width: 365, height: 380)
+    static let medium = CGSize(width: 365, height: 170)
+}
+
+private struct ProportionalScale: ViewModifier {
+    let reference: CGSize
+
+    /// Flip to `true` temporarily to overlay the real widget size on a device, then
+    /// copy the value into `WidgetReferenceSize` for a pixel-exact match on that phone.
+    static let showDebugSize = false
+
+    func body(content: Content) -> some View {
+        GeometryReader { geo in
+            let scale = min(geo.size.width / reference.width,
+                            geo.size.height / reference.height)
+            content
+                .frame(width: reference.width, height: reference.height)
+                .scaleEffect(scale)
+                .frame(width: geo.size.width, height: geo.size.height)
+                .overlay(alignment: .topLeading) {
+                    if Self.showDebugSize {
+                        Text("\(Int(geo.size.width))×\(Int(geo.size.height))")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(3)
+                            .background(.black.opacity(0.6))
+                            .foregroundStyle(.white)
+                    }
+                }
+        }
+    }
+}
+
+private extension View {
+    /// Lays the view out at `reference` size (tuned on iPhone 17 Pro) then scales it to
+    /// fit the current widget, keeping all spacing in proportion across iPhone sizes.
+    func proportionalScale(_ reference: CGSize) -> some View {
+        modifier(ProportionalScale(reference: reference))
     }
 }
 
@@ -316,6 +362,11 @@ struct MiniCalendarView: View {
     }
     // MARK: Large Calendar View
     var body: some View {
+        calendarContent
+            .proportionalScale(WidgetReferenceSize.large)
+    }
+
+    private var calendarContent: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             HStack(alignment: .top, spacing: 5) {
@@ -324,7 +375,7 @@ struct MiniCalendarView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.1)
                     .allowsTightening(true)
-                    .offset(x: 0, y: -8)
+                    .offset(x: 0, y: -13)
                   
 
                 VStack(alignment: .trailing) {
@@ -346,6 +397,7 @@ struct MiniCalendarView: View {
                         .allowsTightening(true)
                 }
                 .padding(.vertical, 2)
+                .offset(x: 0, y: -5)
             }
 
             ProgressView(value: appState.progress)
@@ -368,8 +420,9 @@ struct MiniCalendarView: View {
                 gridSpacingY: 2,
                 headerSpacing: 5,
                 headerLabelSpacing: 1)
+            //.scaleEffect(1.05)
         }
-        .padding(.horizontal, 35)
+        .padding(.horizontal, 45)
        
     }
 }
@@ -395,6 +448,11 @@ struct BarCalendarView: View {
     private var year: Int { calendar.component(.year, from: date) }
 
     var body: some View {
+        barContent
+            .proportionalScale(WidgetReferenceSize.medium)
+    }
+
+    private var barContent: some View {
         HStack(alignment: .top, spacing: 0) {
 
             // LEFT SIDE
@@ -440,8 +498,8 @@ struct BarCalendarView: View {
                     }
                 }
             }
-            .frame(width: 150, height: 135)
-            .padding(.leading, 13)
+            .frame(width: 170, height: 135)
+            .padding(.leading, 16)
             .padding(.top, 5)
             //.background(Color.white)
             
@@ -465,8 +523,9 @@ struct BarCalendarView: View {
                 headerLabelSpacing: 4)
             }
             .scaleEffect(0.50)
-            .frame(width: 70, height: 150)
+            .frame(width: 85, height: 150)
             .padding(.trailing, 50)
+            
             
 
         }
